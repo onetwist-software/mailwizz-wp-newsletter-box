@@ -488,28 +488,6 @@ function mwznb_subscribe_callback() {
 }
 
 /**
- * Admin notice if cache folder not writable.
- */
-function mwznb_admin_notice() {
-    global $pagenow;
-    if ($pagenow != 'widgets.php') {
-        return;
-    }
-    if (is_writable($cacheDir = dirname(__FILE__) . '/mailwizz-php-sdk/MailWizzApi/Cache/data/cache')) {
-        return;
-    }
-    ?>
-    <div class="error">
-        <p><?php _e('Permissions error!', 'mwznb'); ?></p>
-        <p><?php _e('The directory "<strong>'.$cacheDir.'</strong>" must be writable by the web server (chmod -R 0777)!', 'mwznb'); ?></p>
-        <p><?php _e('Please fix this error now.', 'mwznb'); ?></p>
-    </div>
-    <?php
-}
-add_action('admin_notices', 'mwznb_admin_notice');
-
-
-/**
  * @param $apiUrl
  * @param $publicKey
  * @param $privateKey
@@ -521,14 +499,6 @@ function mwznb_build_sdk_config($apiUrl, $publicKey, $privateKey) {
         'apiUrl'        => $apiUrl,
         'publicKey'     => $publicKey,
         'privateKey'    => $privateKey,
-        
-        // components
-        'components' => array(
-            'cache' => array(
-                'class'     => 'MailWizzApi_Cache_File',
-                'filesPath' => dirname(__FILE__) . '/mailwizz-php-sdk/MailWizzApi/Cache/data/cache', // make sure it is writable by webserver
-            )
-        ),
     ));
 }
 
