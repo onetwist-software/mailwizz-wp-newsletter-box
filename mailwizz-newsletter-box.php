@@ -3,16 +3,14 @@
 Plugin Name: MailWizz Newsletter Box
 Plugin URI: http://www.mailwizz.com
 Description: Adds a subscription widget for your <a href="http://www.mailwizz.com/" target="_blank">MailWizz Email Marketing Application</a> based on the <a href="https://github.com/twisted1919/mailwizz-php-sdk" target="_blank">PHP-SDK</a>. <br />Using the widget, you can generate a subscription form based on your mail list definition. You also have full control over the generated form, so you can continue changing it until it fits your needs.
-Version: 1.1
+Version: 1.2
 Author: Serban Cristian <cristian.serban@mailwizz.com>
 Author URI: http://www.mailwizz.com
 License: MIT http://opensource.org/licenses/MIT
 */
 
-// register the sdk autoloader.
 if (!class_exists('MailWizzApi_Autoloader', false)) {
-    require_once dirname(__FILE__) . '/mailwizz-php-sdk/MailWizzApi/Autoloader.php';
-    MailWizzApi_Autoloader::register();
+    require dirname(__FILE__) . '/vendor/autoload.php';
 }
    
 /**
@@ -165,7 +163,7 @@ class MailWizzNewsletterBox extends WP_Widget
         <div class="fields-container" style="<?php echo !empty($listUid) ? 'display:block':'display:none';?>; margin:0; float:left; width:100%">
             <label for="<?php echo $this->get_field_id('selected_fields'); ?>"><strong><?php _e('Fields:'); ?></strong></label> 
             <div class="table-container" style="width:100%;max-height:200px; overflow-y: scroll">
-                <?php mwznb_generate_fields_table($freshFields, $this->get_field_name('selected_fields'), $listSelectedFields);?>
+                <?php mwznb_generate_fields_table((array)$freshFields, $this->get_field_name('selected_fields'), $listSelectedFields);?>
             </div>
             <br class="clear">
             <div style="float: right;">
@@ -221,15 +219,19 @@ class MailWizzNewsletterBox extends WP_Widget
         
         return $instance;
     }
-    
-    /**
+
+	/**
      * Helper method to generate the html form that will be pushed in the widgets area in frontend.
-     * It exists so that we don't have to generate the html at each page load.
-     */
+	 * It exists so that we don't have to generate the html at each page load.
+     * 
+	 * @param array $instance
+	 *
+	 * @return string
+	 */
     protected function generateForm(array $instance)
     {
         if (empty($instance['list_uid']) || empty($instance['public_key']) || empty($instance['private_key'])) {
-            return;
+            return '';
         }
         
         $oldSdkConfig = MailWizzApi_Base::getConfig();
@@ -243,7 +245,7 @@ class MailWizzNewsletterBox extends WP_Widget
         unset($oldSdkConfig);
         
         if (!isset($response['status']) || $response['status'] != 'success' || empty($response['data']['records'])) {
-            return;
+            return '';
         }
         
         $freshFields    = $response['data']['records'];
@@ -276,7 +278,9 @@ class MailWizzNewsletterBox extends WP_Widget
 }
 
 // register widget
-add_action('widgets_init', create_function('', 'return register_widget("MailWizzNewsletterBox");'));
+add_action('widgets_init', function(){
+	return register_widget("MailWizzNewsletterBox");
+});
 
 // register admin assets
 add_action('admin_enqueue_scripts', 'mwznb_load_admin_assets');
@@ -296,8 +300,11 @@ function mwznb_load_frontend_assets() {
 }
 
 // register ajax actions
-// fetch the lists available for given api data
 add_action('wp_ajax_mwznb_fetch_lists', 'mwznb_fetch_lists_callback');
+
+/**
+ * Fetch the lists available for given api data
+ */
 function mwznb_fetch_lists_callback() {
     $apiUrl     = isset($_POST['api_url'])      ? sanitize_text_field($_POST['api_url'])        : null;
     $publicKey  = isset($_POST['public_key'])   ? sanitize_text_field($_POST['public_key'])     : null;
@@ -370,6 +377,10 @@ function mwznb_fetch_lists_callback() {
 
 // fetch list fields
 add_action('wp_ajax_mwznb_fetch_list_fields', 'mwznb_fetch_list_fields_callback');
+
+/**
+ * Fetch list fields
+ */
 function mwznb_fetch_list_fields_callback() {
     $apiUrl     = isset($_POST['api_url'])      ? sanitize_text_field($_POST['api_url'])        : null;
     $publicKey  = isset($_POST['public_key'])   ? sanitize_text_field($_POST['public_key'])     : null;
@@ -399,7 +410,7 @@ function mwznb_fetch_list_fields_callback() {
     if (!isset($response['status']) || $response['status'] != 'success' || empty($response['data']['records']) || count($response['data']['records']) == 0) {
         die();
     }
-    mwznb_generate_fields_table($response['data']['records'], $fieldName, array());
+    mwznb_generate_fields_table((array)$response['data']['records'], $fieldName, array());
     die();
 }
 
@@ -407,6 +418,10 @@ function mwznb_fetch_list_fields_callback() {
 // subscribe a user in given list
 add_action('wp_ajax_mwznb_subscribe', 'mwznb_subscribe_callback');
 add_action('wp_ajax_nopriv_mwznb_subscribe', 'mwznb_subscribe_callback');
+
+/**
+ * Subscribe a user in given list
+ */
 function mwznb_subscribe_callback() {
 	if (!isset($_POST['mwznb_form_nonce']) || !wp_verify_nonce($_POST['mwznb_form_nonce'], basename(__FILE__))) {
 		exit(MailWizzApi_Json::encode(array(
@@ -472,7 +487,9 @@ function mwznb_subscribe_callback() {
     )));
 }
 
-// admin notice if cache folder not writable.
+/**
+ * Admin notice if cache folder not writable.
+ */
 function mwznb_admin_notice() {
     global $pagenow;
     if ($pagenow != 'widgets.php') {
@@ -492,8 +509,13 @@ function mwznb_admin_notice() {
 add_action('admin_notices', 'mwznb_admin_notice');
 
 
-// various function helpers
-// build the sdk config
+/**
+ * @param $apiUrl
+ * @param $publicKey
+ * @param $privateKey
+ *
+ * @return MailWizzApi_Config
+ */
 function mwznb_build_sdk_config($apiUrl, $publicKey, $privateKey) {
     return new MailWizzApi_Config(array(
         'apiUrl'        => $apiUrl,
@@ -510,15 +532,23 @@ function mwznb_build_sdk_config($apiUrl, $publicKey, $privateKey) {
     ));
 }
 
-// restore the original config
+/**
+ * Restore the original config
+ * 
+ * @param $oldConfig
+ */
 function mwznb_restore_sdk_config($oldConfig) {
     if (!empty($oldConfig) && $oldConfig instanceof MailWizzApi_Config) {
         MailWizzApi_Base::setConfig($oldConfig);
     }
 }
 
-// small function to generate our fields table.
-function mwznb_generate_fields_table(array $freshFields = array(), $fieldName, array $listSelectedFields = array()) {
+/**
+ * @param array $freshFields
+ * @param $fieldName
+ * @param array $listSelectedFields
+ */
+function mwznb_generate_fields_table(array $freshFields, $fieldName, array $listSelectedFields = array()) {
     ?>
     <table cellpadding="0" cellspacing="0">
         <thead>

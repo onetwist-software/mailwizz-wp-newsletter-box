@@ -3,8 +3,8 @@ Contributors: twisted1919
 Donate link: http://www.mailwizz.com/
 Tags: email, newsletter box, newsletter, email marketing
 Requires at least: 3.0
-Tested up to: 3.7.1
-Stable tag: 1.1
+Tested up to: 5.0
+Stable tag: 1.2
 License: MIT
 License URI: http://opensource.org/licenses/MIT
 
@@ -33,3 +33,7 @@ You also have full control over the generated form, so you can continue changing
 = 1.1 = 
 * Added nonce check on subscribe form submission
 * Replaced `json_encode` with `MailWizzApi_Json::encode` to make it work on hosts without `json_encode`	
+
+= 1.2 = 
+* Use composer for the php sdk  
+* General updates  
